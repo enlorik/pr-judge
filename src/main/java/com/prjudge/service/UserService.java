@@ -51,7 +51,7 @@ public class UserService {
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         String token = jwtTokenProvider.generateToken((UserDetails) auth.getPrincipal());
 
-        auditLogService.log(AuditAction.REPOSITORY_REGISTERED, "User", user.getId(), user.getUsername(), "User registered");
+        auditLogService.log(AuditAction.USER_REGISTERED, "User", user.getId(), user.getUsername(), "User registered");
 
         return AuthResponse.builder()
                 .token(token)
