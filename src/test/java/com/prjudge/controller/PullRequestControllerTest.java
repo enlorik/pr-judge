@@ -6,11 +6,14 @@ import com.prjudge.domain.enums.*;
 import com.prjudge.dto.request.PullRequestIngestRequest;
 import com.prjudge.dto.response.PullRequestResponse;
 import com.prjudge.dto.response.ScoreResultResponse;
+import com.prjudge.security.JwtTokenProvider;
+import com.prjudge.security.UserDetailsServiceImpl;
 import com.prjudge.service.PullRequestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PullRequestController.class)
+@MockBean(JpaMetamodelMappingContext.class)
 class PullRequestControllerTest {
 
     @Autowired
@@ -35,6 +39,12 @@ class PullRequestControllerTest {
 
     @MockBean
     private PullRequestService pullRequestService;
+
+    @MockBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockBean
+    private JwtTokenProvider jwtTokenProvider;
 
     private PullRequestResponse buildPrResponse(Long id) {
         ScoreResultResponse score = ScoreResultResponse.builder()
@@ -141,8 +151,8 @@ class PullRequestControllerTest {
     }
 
     @Test
-    void accessWithoutAuth_shouldReturn403() throws Exception {
+    void accessWithoutAuth_shouldReturn401() throws Exception {
         mockMvc.perform(get("/api/pull-requests"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -95,7 +95,7 @@ Large, unreviewed, or risky pull requests are one of the most common sources of 
 ## Local Setup
 
 ### Prerequisites
-- Java 17
+- Java 21
 - Maven 3.9+
 - Docker (optional, for PostgreSQL)
 

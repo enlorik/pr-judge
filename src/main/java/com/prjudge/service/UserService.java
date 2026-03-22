@@ -81,6 +81,6 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new com.prjudge.exception.ResourceNotFoundException("User", -1L));
+                .orElseThrow(() -> new com.prjudge.exception.ResourceNotFoundException("User not found: " + username));
     }
 }

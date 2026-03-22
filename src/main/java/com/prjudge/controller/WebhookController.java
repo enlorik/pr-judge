@@ -2,9 +2,9 @@ package com.prjudge.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.prjudge.domain.enums.PrStatus;
-import com.prjudge.dto.request.ChangedFileDto;
 import com.prjudge.dto.request.PullRequestIngestRequest;
 import com.prjudge.dto.response.PullRequestResponse;
+import com.prjudge.repository.RepositoryRepository;
 import com.prjudge.service.PullRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +24,7 @@ import java.util.List;
 public class WebhookController {
 
     private final PullRequestService pullRequestService;
+    private final RepositoryRepository repositoryRepository;
 
     @PostMapping("/github")
     @Operation(summary = "Receive GitHub PR webhook payload")
@@ -48,6 +49,25 @@ public class WebhookController {
                 return ResponseEntity.ok("Action ignored: " + action);
             }
 
+            // Resolve repository by owner/name from the webhook payload
+            String fullName = repoNode.path("full_name").asText("");
+            String[] parts = fullName.split("/", 2);
+            if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+                log.warn("Invalid repository full_name in webhook payload: {}", fullName);
+                return ResponseEntity.badRequest().body("Invalid repository full_name: " + fullName);
+            }
+            String owner = parts[0];
+            String name = parts[1];
+
+            Long repoId = repositoryRepository.findByOwnerAndNameAndActiveTrue(owner, name)
+                    .map(r -> r.getId())
+                    .orElse(null);
+
+            if (repoId == null) {
+                log.warn("No registered repository found for GitHub repo: {}", fullName);
+                return ResponseEntity.ok("Repository not registered: " + fullName);
+            }
+
             PullRequestIngestRequest request = new PullRequestIngestRequest();
             request.setPrNumber(pr.path("number").asInt());
             request.setTitle(pr.path("title").asText(""));
@@ -59,21 +79,8 @@ public class WebhookController {
             request.setTotalDeletions(pr.path("deletions").asInt(0));
             request.setChangedFilesCount(pr.path("changed_files").asInt(0));
             request.setStatus(mapState(pr.path("state").asText("open")));
-
-            // Try to find repository by GitHub URL or name
-            // For webhook ingestion, repositoryId must be resolvable
-            // Fall back to null if not configured — will fail validation cleanly
-            request.setChangedFiles(new ArrayList<>());
-
-            // Attempt to resolve repository ID from the webhook payload's full_name
-            // This requires a registered repository matching the GitHub full_name
-            String fullName = repoNode.path("full_name").asText("");
-            Long repoId = resolveRepositoryId(fullName);
-            if (repoId == null) {
-                log.warn("No repository registered for GitHub repo: {}", fullName);
-                return ResponseEntity.ok("Repository not registered: " + fullName);
-            }
             request.setRepositoryId(repoId);
+            request.setChangedFiles(new ArrayList<>());
 
             PullRequestResponse response = pullRequestService.ingest(request, "github-webhook");
             return ResponseEntity.ok(response);
@@ -91,14 +98,5 @@ public class WebhookController {
             case "draft" -> PrStatus.DRAFT;
             default -> PrStatus.OPEN;
         };
-    }
-
-    /**
-     * Placeholder: resolve repository ID from GitHub full_name.
-     * In production, query the repository table by githubUrl or owner/name.
-     */
-    private Long resolveRepositoryId(String fullName) {
-        // Return null to signal "not found"; real implementation would query the DB
-        return null;
     }
 }
