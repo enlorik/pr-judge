@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: prjudge
+      POSTGRES_USER: prjudge
+      POSTGRES_PASSWORD: prjudge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://db:5432/prjudge
+      DATABASE_USER: prjudge
+      DATABASE_PASSWORD: prjudge
+    depends_on:
+      - db
+volumes:
+  postgres_data:
